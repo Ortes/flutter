@@ -368,9 +368,12 @@ class RenderParagraph extends RenderBox
   //
   // TODO(abarth): Make computing the min/max intrinsic width/height a
   //  non-destructive operation.
-  TextPainter? _textIntrinsicsCache;
+
+  // 08/04/2025
+  // For watever reason, using _textIntrinsicsCache makes this weird bug 
+  // TextPainter? _textIntrinsicsCache;
   TextPainter get _textIntrinsics {
-    return (_textIntrinsicsCache ??= TextPainter())
+    return TextPainter()
       ..text = _textPainter.text
       ..textAlign = _textPainter.textAlign
       ..textDirection = _textPainter.textDirection
@@ -536,7 +539,7 @@ class RenderParagraph extends RenderBox
     _removeSelectionRegistrarSubscription();
     _disposeSelectableFragments();
     _textPainter.dispose();
-    _textIntrinsicsCache?.dispose();
+    // _textIntrinsicsCache?.dispose();
     super.dispose();
   }
 
