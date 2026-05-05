@@ -210,4 +210,43 @@ Future<void> testMain() async {
     await drawPictureUsingCurrentRenderer(recorder.endRecording());
     await matchGoldenFile('ui_draw_atlas_raw.png', region: region);
   });
+
+  // Regression test for skwasm hardcoding linear/mipmap sampling on
+  // drawAtlas regardless of Paint.filterQuality. Uses a tiny 2x2
+  // checker atlas drawn at a large non-integer scale so that the
+  // difference between FilterQuality.none (hard pixel edges) and
+  // FilterQuality.low (blurred edges) is visually obvious. One
+  // golden per FilterQuality value protects all four code paths.
+  for (final ui.FilterQuality filterQuality in ui.FilterQuality.values) {
+    test('drawAtlas honors Paint.filterQuality.${filterQuality.name}', () async {
+      // 2x2 black/white checker atlas.
+      final atlasRecorder = ui.PictureRecorder();
+      final atlasCanvas = ui.Canvas(atlasRecorder);
+      atlasCanvas.drawColor(const ui.Color(0xFFFFFFFF), ui.BlendMode.src);
+      final blackFill = ui.Paint()..color = const ui.Color(0xFF000000);
+      atlasCanvas.drawRect(const ui.Rect.fromLTWH(0, 0, 1, 1), blackFill);
+      atlasCanvas.drawRect(const ui.Rect.fromLTWH(1, 1, 1, 1), blackFill);
+      final ui.Image checker = atlasRecorder.endRecording().toImageSync(2, 2);
+
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder, region);
+      // Single sprite scaled up 73x via RSTransform (non-integer
+      // friendly enough that linear filtering visibly bleeds).
+      const scale = 73.0;
+      final transforms = <ui.RSTransform>[ui.RSTransform(scale, 0.0, 16.0, 16.0)];
+      const rects = <ui.Rect>[ui.Rect.fromLTWH(0, 0, 2, 2)];
+      canvas.drawAtlas(
+        checker,
+        transforms,
+        rects,
+        null,
+        null,
+        null,
+        ui.Paint()..filterQuality = filterQuality,
+      );
+
+      await drawPictureUsingCurrentRenderer(recorder.endRecording());
+      await matchGoldenFile('ui_draw_atlas_filter_${filterQuality.name}.png', region: region);
+    });
+  }
 }
